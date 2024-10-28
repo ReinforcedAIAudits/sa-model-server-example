@@ -1,0 +1,13 @@
+services:
+  local-miner-server:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    image: local-miner-server
+    container_name: local-miner-server
+    environment:
+      MAX_TRIES: 3
+      CONTEXT_SIZE: 8192
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:5000:5000
