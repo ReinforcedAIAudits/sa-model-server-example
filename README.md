@@ -2,7 +2,7 @@
 
 Here is an example of a model server implementation based on [Microsoft's Phi-3.5](https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF) model, running on CPU with [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) (it should work on any modern server CPU and provide acceptable response times).
 
-This implementation is not recommended for use in mainnet; however, you can use it for testing, for running the miner in our testnet, and as a template for creating your own server with a more powerful model. `llama-cpp-python` can utilize GPU by specifying the argument `n_gpu_layers=-1` when initializing the model, for example:
+This implementation is recommended for use in testing, for running the miner in our testnet, and as a template for creating your own server with a more powerful model. The model used in this implementation does not serve the purpose well. `llama-cpp-python` can utilize GPU by specifying the argument `n_gpu_layers=-1` when initializing the model, for example:
 
 ```python
 llm = Llama(
