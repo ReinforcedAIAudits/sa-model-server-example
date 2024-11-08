@@ -70,7 +70,10 @@ def try_prepare_result(result) -> list[dict] | None:
         except:
             return None
     if isinstance(result, dict):
-        result = [result]
+        if len(result)==1 and isinstance(list(result.values())[0], list) and all(isinstance(item, dict) for item in list(result.values())[0]):
+            result = list(result.values())[0]
+        else:
+            result = [result]
     prepared = []
     for item in result:
         for key in REQUIRED_KEYS:
