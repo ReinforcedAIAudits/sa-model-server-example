@@ -31,13 +31,23 @@ Output format:
     {
         "fromLine": "Start line of the vulnerability", 
         "toLine": "End line of the vulnerability",
-        "vulnerabilityClass": "Type of vulnerability (e.g., Reentrancy, Integer Overflow)",
+        "vulnerabilityClass": "Type of vulnerability (e.g., Reentrancy, Integer Overflow, Invalid Code)",
         "testCase": "Example code that could trigger the vulnerability",
         "description": "Detailed description of the issue",
         "priorArt": "Similar vulnerabilities encountered in wild before. Type: array",
         "fixedLines": "Fixed version of the original source",
     },
 ]
+
+If the entire code is invalid or cannot be meaningfully analyzed:
+- Generate a single vulnerability report entry with the following details:
+    {
+        "fromLine": 1, 
+        "toLine": Total number of lines in the code,
+        "vulnerabilityClass": "Invalid Code",
+        "description": "The entire code is considered invalid for audit processing.",
+    }
+
 
 For fields `fromLine` and `toLine` use only the line number as an integer, without any prefix.
 Each report entry should describe a separate vulnerability with precise line numbers, type, and an exploit example. 
@@ -53,14 +63,19 @@ def generate_audit(source: str):
             {"role": ROLE_SYSTEM, "content": PROMPT},
             {"role": ROLE_USER, "content": preprocessed},
         ],
-        response_format={'type': 'json_object'}
+        response_format={"type": "json_object"},
     )
     message = completion["choices"][0]["message"]["content"]
     return message
 
 
-REQUIRED_KEYS = {'fromLine', 'toLine', 'vulnerabilityClass', 'testCase', 'description', 'fixedLines'}
-INT_KEYS = ('fromLine', 'toLine')
+REQUIRED_KEYS = {
+    "fromLine",
+    "toLine",
+    "vulnerabilityClass",
+    "description",
+}
+INT_KEYS = ("fromLine", "toLine")
 
 
 def try_prepare_result(result) -> list[dict] | None:
@@ -70,7 +85,11 @@ def try_prepare_result(result) -> list[dict] | None:
         except:
             return None
     if isinstance(result, dict):
-        if len(result)==1 and isinstance(list(result.values())[0], list) and all(isinstance(item, dict) for item in list(result.values())[0]):
+        if (
+            len(result) == 1
+            and isinstance(list(result.values())[0], list)
+            and all(isinstance(item, dict) for item in list(result.values())[0])
+        ):
             result = list(result.values())[0]
         else:
             result = [result]
@@ -80,10 +99,20 @@ def try_prepare_result(result) -> list[dict] | None:
             if key not in item:
                 return None
         cleared = {k: item[k] for k in REQUIRED_KEYS}
-        if 'priorArt' in item and isinstance(item['priorArt'], list) and all(isinstance(x, str) for x in item['priorArt']):
-            cleared['priorArt'] = item['priorArt']
+        if (
+            "priorArt" in item
+            and isinstance(item["priorArt"], list)
+            and all(isinstance(x, str) for x in item["priorArt"])
+        ):
+            cleared["priorArt"] = item["priorArt"]
+        if "fixedLines" in item and isinstance(item["fixedLines"], str):
+            cleared["fixedLines"] = item["fixedLines"]
+        if "testCase" in item and isinstance(item["testCase"], str):
+            cleared["testCase"] = item["testCase"]
         for k in INT_KEYS:
-            if isinstance(cleared[k], int) or (isinstance(item[k], str) and item[k].isdigit()):
+            if isinstance(cleared[k], int) or (
+                isinstance(item[k], str) and item[k].isdigit()
+            ):
                 cleared[k] = int(cleared[k])
             else:
                 return None
@@ -91,11 +120,11 @@ def try_prepare_result(result) -> list[dict] | None:
     return prepared
 
 
-@app.route('/submit', methods=['POST'])
+@app.route("/submit", methods=["POST"])
 def submit():
-    tries = int(os.getenv('MAX_TRIES', '3'))
+    tries = int(os.getenv("MAX_TRIES", "3"))
     is_valid, result = False, None
-    contract_code = flask.request.data.decode('utf-8')
+    contract_code = flask.request.data.decode("utf-8")
     while tries > 0:
         result = generate_audit(contract_code)
         result = try_prepare_result(result)
@@ -108,5 +137,5 @@ def submit():
     return result
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(port=5000)
